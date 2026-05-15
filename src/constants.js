@@ -48,8 +48,12 @@ export const TIMING_WINDOW = 3.0; // generous Z range (~0.1s at pitch speed)
 export const MAX_EXIT_VELO = 30.0; // m/s → ×2.25 = 67.5 m/s (~151 mph)
 export const MIN_EXIT_VELO = 12.0; // m/s → ×2.25 = 27 m/s (~60 mph)
 
+// ── Baseball Rules ──────────────────────────────────────────────
+export const MAX_STRIKES = 3;   // 三振出局
+export const MAX_BALLS = 4;     // 四壞保送
+export const MAX_OUTS = 3;      // 三出局換局
+
 // Game
-export const MAX_STRIKES = 10;
 export const PHYSICS_DT = 1 / 120;
 
 // Conversion
