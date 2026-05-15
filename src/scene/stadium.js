@@ -474,7 +474,7 @@ export class Stadium {
     ));
 
     // Initial render
-    this.updateScoreboard({ strikes: 0, hits: 0, homeRuns: 0, outs: 0, bestDistance: 0, totalPitches: 0 });
+    this.updateScoreboard({ strikes: 0, balls: 0, hits: 0, homeRuns: 0, outs: 0, inning: 1, score: 0, totalScore: 0 });
 
     // Side ad boards on outfield wall
     this._addWallAd(-30, 'MLB', 0x1a3a8a);
@@ -488,46 +488,62 @@ export class Stadium {
     if (!ctx) return;
     const W = 1024, H = 384;
 
-    // Background
     ctx.fillStyle = '#0a0a14';
     ctx.fillRect(0, 0, W, H);
 
-    // Border
     ctx.strokeStyle = '#ffcc00';
     ctx.lineWidth = 4;
     ctx.strokeRect(10, 10, W - 20, H - 20);
 
-    // Two big numbers: HR and STRIKES
     ctx.textAlign = 'center';
 
-    // HR
+    // 得分（左）
     ctx.fillStyle = '#888888';
-    ctx.font = '40px Arial';
-    ctx.fillText('HOME RUNS', W * 0.3, 100);
+    ctx.font = '36px Arial';
+    ctx.fillText('得  分', W * 0.22, 95);
     ctx.fillStyle = '#ffcc00';
-    ctx.font = 'bold 120px Arial';
-    ctx.fillText(String(stats.homeRuns || 0), W * 0.3, 240);
+    ctx.font = 'bold 130px Arial';
+    const totalScore = (stats.totalScore || 0) + (stats.score || 0);
+    ctx.fillText(String(totalScore), W * 0.22, 248);
 
-    // STRIKES (outs)
+    // 局數（中）
     ctx.fillStyle = '#888888';
-    ctx.font = '40px Arial';
-    ctx.fillText('STRIKES', W * 0.7, 100);
-    ctx.fillStyle = '#ff4444';
-    ctx.font = 'bold 120px Arial';
-    ctx.fillText(String(stats.strikes || 0), W * 0.7, 240);
+    ctx.font = '36px Arial';
+    ctx.fillText('局', W * 0.5, 95);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 130px Arial';
+    ctx.fillText(String(stats.inning || 1), W * 0.5, 248);
 
-    // Divider
+    // 出局數（右）
+    ctx.fillStyle = '#888888';
+    ctx.font = '36px Arial';
+    ctx.fillText('出  局', W * 0.78, 95);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 130px Arial';
+    ctx.fillText(String(stats.outs || 0), W * 0.78, 248);
+
+    // 垂直分隔線
     ctx.strokeStyle = '#333333';
     ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(W / 2, 50);
-    ctx.lineTo(W / 2, H - 50);
-    ctx.stroke();
+    for (const x of [W * 0.36, W * 0.64]) {
+      ctx.beginPath();
+      ctx.moveTo(x, 50);
+      ctx.lineTo(x, H - 50);
+      ctx.stroke();
+    }
+
+    // B-S 計數（底部小字）
+    ctx.fillStyle = '#666';
+    ctx.font = '26px Arial';
+    ctx.fillText(
+      `B ${stats.balls || 0}  S ${stats.strikes || 0}  HR ${stats.homeRuns || 0}`,
+      W / 2, H - 22
+    );
 
     // Footer
     ctx.fillStyle = '#444444';
-    ctx.font = '28px Arial';
-    ctx.fillText('HOMERUN HERO STADIUM', W / 2, H - 30);
+    ctx.font = '22px Arial';
+    ctx.fillText('HOMERUN HERO STADIUM', W / 2, H - 48);
 
     this._boardTex.needsUpdate = true;
   }
