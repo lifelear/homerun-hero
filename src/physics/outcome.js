@@ -44,75 +44,67 @@ export function determineOutcome(ballFlight, launchAngle, exitSpeed, contactQual
 
   // Foul ball check
   if (Math.abs(sprayAngle) > 45) {
-    return { type: 'FOUL', label: 'Foul Ball', distanceFt: distFt };
+    return { type: 'FOUL', label: '界外球', distanceFt: distFt };
   }
 
   // Check if ball cleared the fence (home run)
   const fenceDist = fenceDistanceAt(sprayAngle);
   const fenceReached = dist >= fenceDist;
-  // Estimate height at fence distance (was the ball still high enough?)
   const heightAtFence = ballFlight.maxHeight > FENCE_HEIGHT;
 
   if (fenceReached && heightAtFence && launchAngle > 10) {
-    // Project total distance if ball hadn't been stopped
-    const projectedDistFt = distFt; // landing already simulated beyond fence
     return {
       type: 'HOME_RUN',
-      label: 'HOME RUN!',
-      distanceFt: Math.round(projectedDistFt),
+      label: '全壘打！',
+      distanceFt: Math.round(distFt),
     };
   }
 
   // Ground ball (low launch angle)
   if (launchAngle < 10) {
-    // Most grounders are outs (~85%)
     if (exitSpeed > 40 && contactQuality > 0.7 && Math.random() < 0.2) {
-      return { type: 'SINGLE', label: 'Infield Single!', distanceFt: Math.round(distFt) };
+      return { type: 'SINGLE', label: '內野安打！', distanceFt: Math.round(distFt) };
     }
-    return { type: 'OUT', label: 'Ground Out', distanceFt: Math.round(distFt) };
+    return { type: 'OUT', label: '滾地出局', distanceFt: Math.round(distFt) };
   }
 
-  // Pop-up / high fly ball (launchAngle > 40)
+  // Pop-up / high fly ball
   if (launchAngle > 40) {
-    return { type: 'OUT', label: 'Pop Out', distanceFt: Math.round(distFt) };
+    return { type: 'OUT', label: '高飛出局', distanceFt: Math.round(distFt) };
   }
 
   // Fly ball / line drive outcomes based on distance
   if (dist < 50) {
-    // Shallow — most are outs
     if (launchAngle > 22 || exitSpeed < 38) {
-      return { type: 'OUT', label: Math.random() < 0.5 ? 'Fly Out' : 'Line Out', distanceFt: Math.round(distFt) };
+      return { type: 'OUT', label: Math.random() < 0.5 ? '飛球出局' : '平飛出局', distanceFt: Math.round(distFt) };
     }
-    return { type: 'SINGLE', label: 'Line Drive Single!', distanceFt: Math.round(distFt) };
+    return { type: 'SINGLE', label: '一壘安打！', distanceFt: Math.round(distFt) };
   }
 
   if (dist < 75) {
-    // Shallow outfield — 50% out
     if (Math.random() < 0.5) {
-      return { type: 'OUT', label: 'Fly Out', distanceFt: Math.round(distFt) };
+      return { type: 'OUT', label: '飛球出局', distanceFt: Math.round(distFt) };
     }
-    return { type: 'SINGLE', label: 'Single!', distanceFt: Math.round(distFt) };
+    return { type: 'SINGLE', label: '一壘安打！', distanceFt: Math.round(distFt) };
   }
 
   if (dist < 100) {
-    // Mid outfield
     if (launchAngle > 32 && exitSpeed < 42) {
-      return { type: 'OUT', label: 'Fly Out', distanceFt: Math.round(distFt) };
+      return { type: 'OUT', label: '飛球出局', distanceFt: Math.round(distFt) };
     }
     if (exitSpeed > 42) {
-      return { type: 'DOUBLE', label: 'Double!', distanceFt: Math.round(distFt) };
+      return { type: 'DOUBLE', label: '二壘安打！', distanceFt: Math.round(distFt) };
     }
-    return { type: 'SINGLE', label: 'Single!', distanceFt: Math.round(distFt) };
+    return { type: 'SINGLE', label: '一壘安打！', distanceFt: Math.round(distFt) };
   }
 
   if (dist < fenceDist * 0.95) {
-    // Deep outfield, didn't quite clear fence
     if (exitSpeed > 44) {
-      return { type: 'TRIPLE', label: 'Triple!', distanceFt: Math.round(distFt) };
+      return { type: 'TRIPLE', label: '三壘安打！', distanceFt: Math.round(distFt) };
     }
-    return { type: 'DOUBLE', label: 'Double!', distanceFt: Math.round(distFt) };
+    return { type: 'DOUBLE', label: '二壘安打！', distanceFt: Math.round(distFt) };
   }
 
   // Off the wall
-  return { type: 'DOUBLE', label: 'Off the Wall - Double!', distanceFt: Math.round(distFt) };
+  return { type: 'DOUBLE', label: '打到牆壁！二壘安打！', distanceFt: Math.round(distFt) };
 }
