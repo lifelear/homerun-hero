@@ -5,25 +5,165 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Homerun Hero</title>
   <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* ── HUD 計分板 ── */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 10; pointer-events: none;
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+
+    #hud-top {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(0,0,0,0.75); padding: 6px 14px; gap: 8px;
+    }
+
+    #hud-title {
+      font-size: 12px; color: #ffcc00; letter-spacing: 2px;
+      font-weight: 900; white-space: nowrap;
+    }
+
+    #hud-count-area {
+      display: flex; gap: 14px; align-items: center;
+    }
+
+    .count-block {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+
+    .count-label {
+      font-size: 9px; color: #999; letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    .count-value {
+      font-size: 22px; font-weight: 900; color: #fff; line-height: 1;
+    }
+
+    .dot-row {
+      display: flex; gap: 4px; align-items: center; min-height: 18px;
+    }
+
+    .count-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      border: 2px solid #555; background: transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .count-dot.out-dot.active    { background: #ff4444; border-color: #ff6666; }
+    .count-dot.strike-dot.active { background: #ffcc00; border-color: #ffdd44; }
+    .count-dot.ball-dot.active   { background: #44cc44; border-color: #66dd66; }
+
+    #pause-area {
+      pointer-events: auto; cursor: pointer;
+      font-size: 20px; color: #fff; padding: 4px 8px;
+    }
+
+    /* ── 壘包圖示 ── */
+    #hud-bases-wrap {
+      position: fixed; top: 62px; right: 14px; pointer-events: none;
+    }
+
+    #hud-bases { position: relative; width: 60px; height: 60px; }
+
+    .base-diamond {
+      position: absolute; width: 16px; height: 16px;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.35);
+      transform: rotate(45deg);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .base-diamond.occupied { background: #ffcc00; border-color: #ffaa00; }
+
+    /* 菱形排列：二壘上、一壘右、三壘左、本壘下 */
+    #base-2    { top: 0px;  left: 22px; }
+    #base-1    { top: 22px; left: 42px; }
+    #base-3    { top: 22px; left: 2px;  }
+    #base-home { top: 42px; left: 22px; opacity: 0.4; }
+
+    /* ── 底部統計 ── */
+    #hud-bottom {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 20px;
+      background: rgba(0,0,0,0.65); padding: 5px 0;
+      font-size: 12px; color: #ccc;
+      font-family: 'Arial Black', Arial, sans-serif;
+      pointer-events: none;
+    }
+
+    /* ── 結果 flash 顏色 ── */
+    .ball-flash { color: #44cc44 !important; }
+    .out        { color: #ff4444 !important; }
+
+    /* ── 標題畫面規則說明 ── */
+    .sub-rules {
+      font-size: 13px; color: #aaa; margin: 8px 0 14px;
+      line-height: 1.8; text-align: center;
+    }
+  </style>
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
 
-  <!-- HUD overlay -->
+  <!-- HUD 頂部 -->
   <div id="hud">
     <div id="hud-top">
       <div id="hud-title">HOMERUN HERO</div>
-      <div id="hud-strikes"></div>
-    </div>
-    <div id="pause-area"><span id="diff-label">EASY</span> <span id="pause-btn">⏸</span></div>
-    <div id="hud-bottom">
-      <span id="hud-hits">HITS: 0</span>
-      <span id="hud-hr">HR: 0</span>
-      <span id="hud-best">BEST: 0 ft</span>
+
+      <div id="hud-count-area">
+        <!-- 局數 -->
+        <div class="count-block">
+          <div class="count-label">局</div>
+          <div class="count-value" id="hud-inning">1</div>
+        </div>
+
+        <!-- 得分 -->
+        <div class="count-block">
+          <div class="count-label">分</div>
+          <div class="count-value" id="hud-score">0</div>
+        </div>
+
+        <!-- 出局 -->
+        <div class="count-block">
+          <div class="count-label">出局</div>
+          <div class="dot-row" id="hud-outs"></div>
+        </div>
+
+        <!-- 好球 -->
+        <div class="count-block">
+          <div class="count-label">好球</div>
+          <div class="dot-row" id="hud-strikes"></div>
+        </div>
+
+        <!-- 壞球 -->
+        <div class="count-block">
+          <div class="count-label">壞球</div>
+          <div class="dot-row" id="hud-balls"></div>
+        </div>
+      </div>
+
+      <div id="pause-area"><span id="pause-btn">⏸</span></div>
     </div>
   </div>
 
-  <!-- Pitch tracking overlay (2D strike zone view) -->
+  <!-- 壘包圖示（右上角獨立定位）-->
+  <div id="hud-bases-wrap">
+    <div id="hud-bases">
+      <div id="base-2"    class="base-diamond"></div>
+      <div id="base-1"    class="base-diamond"></div>
+      <div id="base-3"    class="base-diamond"></div>
+      <div id="base-home" class="base-diamond"></div>
+    </div>
+  </div>
+
+  <!-- 底部統計 -->
+  <div id="hud-bottom">
+    <span id="hud-hits">安打: 0</span>
+    <span id="hud-hr">全壘打: 0</span>
+    <span id="hud-best">最遠: 0 ft</span>
+  </div>
+
+  <!-- Pitch tracking overlay -->
   <div id="pitch-tracker">
     <canvas id="pitch-tracker-canvas"></canvas>
   </div>
@@ -40,8 +180,11 @@
   <!-- Title screen -->
   <div id="title-screen">
     <h1>HOMERUN HERO</h1>
-    <p>Click or tap to swing at pitches!</p>
-    <p class="sub">10 strikes and you're out</p>
+    <p>點擊 / 點按瞄準揮棒！</p>
+    <div class="sub-rules">
+      ⚾ 3 好球三振・4 壞球保送<br>
+      3 出局換局・累積得分・無限局
+    </div>
     <div id="difficulty-selector">
       <div class="diff-btn selected" data-diff="easy">EASY</div>
       <div class="diff-btn" data-diff="normal">NORMAL</div>
@@ -67,7 +210,7 @@
     <div class="pause-btn" id="pause-menu">MAIN MENU</div>
   </div>
 
-  <div id="version">v1.6.0</div>
+  <div id="version">v2.0.0</div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
