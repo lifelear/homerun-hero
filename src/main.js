@@ -16,6 +16,7 @@ import { ScoreTracker } from './game/score-tracker.js';
 import { InputManager } from './input/input-manager.js';
 import { HUD } from './ui/hud.js';
 import { PitchTracker } from './ui/pitch-tracker.js';
+import { BaseRunners } from './scene/base-runners.js';
 import { M_TO_FT, MS_TO_MPH, STRIKE_ZONE } from './constants.js';
 import { Crowd } from './scene/crowd.js';
 
@@ -35,6 +36,7 @@ const input = new InputManager(canvas);
 const hud = new HUD();
 const pitchTracker = new PitchTracker();
 const crowd = new Crowd(gameScene.scene);
+let baseRunners = new BaseRunners(gameScene.scene);
 
 // Pitch state
 let currentPitch = null;
@@ -54,9 +56,6 @@ let plateFinalY = 0;
 let hitBallClone = null;
 let landedTimer = 0;
 
-// 換局/事件暫停用
-let pendingGameEvent = null;  // { event, label, className }
-
 // UI elements
 const titleScreen = document.getElementById('title-screen');
 const gameOverScreen = document.getElementById('game-over');
@@ -65,6 +64,7 @@ const finalStatsEl = document.getElementById('final-stats');
 function updateStats() {
   hud.update(score);
   stadium.updateScoreboard(score);
+  baseRunners.update(score.bases);
 }
 
 // --- Pause ---
@@ -129,12 +129,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') togglePause();
 });
 
-// HUD pause button
 document.getElementById('pause-btn').addEventListener('pointerdown', (e) => {
-  e.stopPropagation();
-  togglePause();
+  e.stopPropagation(); togglePause();
 });
-
 document.getElementById('pause-resume').addEventListener('pointerdown', (e) => { e.stopPropagation(); resumeGame(); });
 document.getElementById('pause-restart').addEventListener('pointerdown', (e) => { e.stopPropagation(); restartGame(); });
 document.getElementById('pause-menu').addEventListener('pointerdown', (e) => { e.stopPropagation(); goToMenu(); });
@@ -153,16 +150,13 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     setDifficulty(btn.dataset.diff);
-    const labelEl = document.getElementById('diff-label');
-    if (labelEl) labelEl.textContent = btn.textContent;
   });
 });
 
-// --- Title screen ---
+// --- Start game ---
 function startGame() {
   score.reset();
   recentPitchTypes = [];
-  pendingGameEvent = null;
   updateStats();
   titleScreen.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
@@ -172,7 +166,6 @@ function startGame() {
   gameState.transition(State.WAITING);
 }
 
-/** Convert screen click NDC to world position on the strike zone plane (Z=0) */
 function clickToStrikeZonePlane(clickNDC) {
   const ndc = new THREE.Vector3(clickNDC.x, clickNDC.y, 0.5);
   ndc.unproject(gameScene.camera);
@@ -181,35 +174,24 @@ function clickToStrikeZonePlane(clickNDC) {
   if (Math.abs(dir.z) < 0.001) return null;
   const t = -camPos.z / dir.z;
   if (t < 0) return null;
-  return new THREE.Vector3(
-    camPos.x + dir.x * t,
-    camPos.y + dir.y * t,
-    0
-  );
+  return new THREE.Vector3(camPos.x + dir.x * t, camPos.y + dir.y * t, 0);
 }
 
 // ── 棒球規則事件處理 ─────────────────────────────────────────────
 
-/**
- * 處理 score-tracker 回傳的 gameEvent，更新 UI 並決定下一步
- * @returns {boolean} 是否觸發了「需要等待顯示」的事件
- */
 function handleGameEvent(evt) {
   if (!evt) return false;
 
   switch (evt.event) {
-    case 'OUT':
-    case 'GROUNDOUT':
-    case 'FLYOUT':
-    case 'STRIKEOUT': {
-      const label = evt.type === 'STRIKEOUT' ? '三振出局！' :
-                    evt.type === 'GROUNDOUT' ? '滾地出局' : '飛球出局';
+    case 'GAME_OVER': {
       updateStats();
-      if (score.outs >= 3) {
-        // 已換局（_endInning 在 _recordOut 裡呼叫）
-        // 但 _recordOut 會先把 outs 設回 0，所以要看 INNING_OVER
-      }
-      hud.showEventFlash(label, 'out');
+      hud.showEventFlash('第9局結束！', 'hit');
+      // 延遲顯示結果畫面
+      setTimeout(() => {
+        pitchTracker.hide();
+        showGameOver();
+        gameState.transition(State.GAME_OVER);
+      }, 2000);
       return true;
     }
     case 'INNING_OVER': {
@@ -217,12 +199,27 @@ function handleGameEvent(evt) {
       hud.showEventFlash(`第 ${score.inning - 1} 局結束！得 ${evt.runs} 分`, 'hit');
       return true;
     }
+    case 'OUT':
+    case 'GROUNDOUT':
+    case 'FLYOUT':
+    case 'STRIKEOUT': {
+      const label = evt.type === 'STRIKEOUT' ? '三振出局！'
+                  : evt.type === 'GROUNDOUT'  ? '滾地出局'
+                  : '飛球出局';
+      updateStats();
+      hud.showEventFlash(label, 'out');
+      return true;
+    }
     case 'WALK': {
       updateStats();
-      const walkMsg = evt.scored > 0
-        ? `四壞保送！壘包推進，得 ${evt.scored} 分！`
-        : '四壞保送！';
-      hud.showEventFlash(walkMsg, 'hit');
+      const msg = evt.scored > 0 ? `四壞保送！得 ${evt.scored} 分！` : '四壞保送！';
+      hud.showEventFlash(msg, 'hit');
+      return true;
+    }
+    case 'HBP': {
+      updateStats();
+      const msg = evt.scored > 0 ? `觸身球！得 ${evt.scored} 分！` : '觸身球！直接上壘！';
+      hud.showEventFlash(msg, 'hit');
       return true;
     }
     default:
@@ -261,24 +258,14 @@ function physicsTick(dt) {
         );
 
         if (result.isWhiff) {
-          // 揮棒落空
           swungAndMissed = true;
           const evt = score.addSwingingStrike();
           updateStats();
-          if (handleGameEvent(evt)) {
-            // 三振出局或換局會在 RESULT 後處理
-          } else {
-            hud.showEventFlash('揮棒落空！', 'strike');
-          }
+          if (!handleGameEvent(evt)) hud.showEventFlash('揮棒落空！', 'strike');
         } else {
-          // 打到球
           hud.showPitchInfo(currentPitch);
           swingResult = result;
-          ballFlight.launch(
-            pitchTraj.position.clone(),
-            result.exitVelocity,
-            result.spinVector
-          );
+          ballFlight.launch(pitchTraj.position.clone(), result.exitVelocity, result.spinVector);
           pitchTraj.active = false;
           pitchTracker.clearBall();
           strikeZone.hideBallMarker();
@@ -294,7 +281,7 @@ function physicsTick(dt) {
     }
   }
 
-  // ── WAITING：準備下一球 ────────────────────────────────────────
+  // ── WAITING ────────────────────────────────────────────────────
   if (st === State.WAITING) {
     if (gameState.stateTime > 1.0) {
       currentPitch = selectPitch(recentPitchTypes);
@@ -314,7 +301,6 @@ function physicsTick(dt) {
         const dist = releasePoint.distanceTo(new THREE.Vector3(currentPitch.targetX, currentPitch.targetY, 0));
         pitchTotalFlightTime = dist / currentPitch.speedMs;
         pitchFlightTime = 0;
-
         lastMarkerX = currentPitch.targetX;
         lastMarkerY = currentPitch.targetY;
         strikeZone.updateBallMarker(lastMarkerX, lastMarkerY);
@@ -324,13 +310,12 @@ function physicsTick(dt) {
     }
   }
 
-  // ── PITCHING：球在飛行中 ───────────────────────────────────────
+  // ── PITCHING ───────────────────────────────────────────────────
   if (st === State.PITCHING) {
     pitchTraj.step(dt);
 
     if (pitchTraj.active) {
       pitchFlightTime += dt;
-
       ballVisual.update(
         pitchTraj.position,
         new THREE.Vector3(currentPitch.spinAxis.x, currentPitch.spinAxis.y, currentPitch.spinAxis.z),
@@ -339,7 +324,6 @@ function physicsTick(dt) {
       );
 
       const t = Math.min(pitchFlightTime / pitchTotalFlightTime, 1);
-
       if (currentPitch.breakSegments) {
         const segs = currentPitch.breakSegments;
         let accumX = 0, accumY = 0;
@@ -347,10 +331,8 @@ function physicsTick(dt) {
         for (let i = 0; i < 3; i++) {
           const segStart = i * segLen;
           const segEnd = segStart + segLen;
-          if (t >= segEnd) {
-            accumX += segs[i].dx;
-            accumY += segs[i].dy;
-          } else if (t > segStart) {
+          if (t >= segEnd) { accumX += segs[i].dx; accumY += segs[i].dy; }
+          else if (t > segStart) {
             const st2 = (t - segStart) / segLen;
             accumX += segs[i].dx * st2;
             accumY += segs[i].dy * st2;
@@ -383,86 +365,78 @@ function physicsTick(dt) {
       plateTimer = 0;
     }
 
-    // 等 200ms 讓玩家可以揮棒
     if (plateArrived && gameState.current === State.PITCHING) {
       plateTimer += dt;
       if (plateTimer >= 0.2) {
         const inZone = plateFinalX >= -0.25 && plateFinalX <= 0.25 &&
                        plateFinalY >= 0.45 && plateFinalY <= 1.1;
 
+        // 觸身球判定：球非常偏，且沒有揮棒（約 10% 機率）
+        const isWildPitch = !inZone &&
+                            (Math.abs(plateFinalX) > 0.35 || plateFinalY < 0.3 || plateFinalY > 1.2) &&
+                            !didSwing &&
+                            Math.random() < 0.10;
+
         if (swungAndMissed) {
           swungAndMissed = false;
-          // 已在揮棒時處理
+        } else if (isWildPitch) {
+          // 觸身球
+          const evt = score.addHBP();
+          updateStats();
+          handleGameEvent(evt);
         } else if (didSwing) {
-          // 揮棒但沒打到（不在好球帶也算揮棒落空）
           const evt = score.addSwingingStrike();
           updateStats();
-          if (!handleGameEvent(evt)) {
-            hud.showEventFlash('揮棒落空！', 'strike');
-          }
+          if (!handleGameEvent(evt)) hud.showEventFlash('揮棒落空！', 'strike');
         } else if (inZone) {
-          // 好球帶內沒揮棒 = 被叫好球
           const evt = score.addCalledStrike();
           updateStats();
-          if (!handleGameEvent(evt)) {
-            hud.showEventFlash('好球！', 'strike');
-          }
+          if (!handleGameEvent(evt)) hud.showEventFlash('好球！', 'strike');
         } else {
-          // 壞球
           const evt = score.addBall();
           updateStats();
-          if (!handleGameEvent(evt)) {
-            hud.showEventFlash('壞球', 'ball-flash');
-          }
+          if (!handleGameEvent(evt)) hud.showEventFlash('壞球', 'ball-flash');
         }
 
         didSwing = false;
         plateArrived = false;
-        gameState.transition(State.RESULT);
+
+        // 若遊戲已結束則不繼續
+        if (!score.isGameOver()) {
+          gameState.transition(State.RESULT);
+        }
       }
     }
   }
 
-  // ── BALL_IN_PLAY：打擊後球飛行 ────────────────────────────────
+  // ── BALL_IN_PLAY ───────────────────────────────────────────────
   if (st === State.BALL_IN_PLAY) {
     ballFlight.step(dt);
-
-    if (ballFlight.active && hitBallClone) {
-      hitBallClone.update(ballFlight.position);
-    }
+    if (ballFlight.active && hitBallClone) hitBallClone.update(ballFlight.position);
 
     if (ballFlight.landed && !currentOutcome) {
       currentOutcome = determineOutcome(
-        ballFlight,
-        swingResult.launchAngle,
-        swingResult.exitSpeed,
-        swingResult.contactQuality
+        ballFlight, swingResult.launchAngle, swingResult.exitSpeed, swingResult.contactQuality
       );
-
       const distFt = ballFlight.getDistance() * M_TO_FT;
 
-      // 界外球特殊處理：加計數但不結束打席
       if (currentOutcome.type === 'FOUL') {
         score.addFoul();
         updateStats();
         hud.showResultOverlay(currentOutcome, swingResult.exitSpeed, swingResult.launchAngle, distFt);
       } else {
-        // 安打/出局/全壘打：完整處理
         const evt = score.addResult(currentOutcome);
         updateStats();
         hud.showResultOverlay(currentOutcome, swingResult.exitSpeed, swingResult.launchAngle, distFt);
         handleGameEvent(evt);
         if (currentOutcome.type === 'HOME_RUN') crowd.celebrate();
       }
-
       landedTimer = 0;
     }
 
     if (ballFlight.landed) {
       landedTimer += dt;
-      if (landedTimer >= 1.0) {
-        gameState.transition(State.RESULT);
-      }
+      if (landedTimer >= 1.0) gameState.transition(State.RESULT);
     }
   }
 
@@ -472,7 +446,7 @@ function physicsTick(dt) {
     hitBallClone.update(ballFlight.position);
   }
 
-  // ── RESULT：展示結果後繼續 ────────────────────────────────────
+  // ── RESULT ─────────────────────────────────────────────────────
   if (st === State.RESULT) {
     if (gameState.stateTime > 1.5) {
       hud.hideResultOverlay();
@@ -482,9 +456,14 @@ function physicsTick(dt) {
       strikeZone.hideBallMarker();
       strikeZone.hideClickMarker();
 
-      // 生存模式永遠繼續
-      gameScene.resetCamera();
-      gameState.transition(State.WAITING);
+      if (score.isGameOver()) {
+        pitchTracker.hide();
+        showGameOver();
+        gameState.transition(State.GAME_OVER);
+      } else {
+        gameScene.resetCamera();
+        gameState.transition(State.WAITING);
+      }
     }
   }
 }
@@ -499,23 +478,19 @@ function renderFrame(dt) {
 }
 
 function showGameOver() {
-  // 生存模式不會呼叫，保留備用
   const totalScore = score.totalScore + score.score;
   finalStatsEl.innerHTML = [
-    `得分: ${totalScore}`,
+    `最終得分: <strong>${totalScore} 分</strong>`,
     `全壘打: ${score.homeRuns}`,
     `安打: ${score.hits}`,
     `最遠: ${Math.round(score.bestDistance)} ft`,
-    `打了 ${score.inning - 1} 局`,
+    `保送: ${score.walks} ・ 觸身球: ${score.hbp}`,
   ].join('<br>');
 
   const diff = getDifficultyLabel();
   const entry = {
-    score: totalScore,
-    hr: score.homeRuns,
-    hits: score.hits,
+    score: totalScore, hr: score.homeRuns, hits: score.hits,
     best: Math.round(score.bestDistance),
-    innings: score.inning - 1,
     date: new Date().toLocaleDateString(),
   };
   const storageKey = `homerun-hero-lb-${diff}`;
@@ -530,12 +505,12 @@ function showGameOver() {
   let rows = '';
   board.forEach((e, i) => {
     const cls = i === currentIdx ? ' class="current"' : '';
-    rows += `<tr${cls}><td>${i + 1}</td><td>${e.score}</td><td>${e.hr} HR</td><td>${e.innings}局</td></tr>`;
+    rows += `<tr${cls}><td>${i + 1}</td><td>${e.score}分</td><td>${e.hr} HR</td><td>${e.best} ft</td></tr>`;
   });
   lbEl.innerHTML = `
     <h2>LEADERBOARD - ${diff}</h2>
     <table>
-      <tr><th>#</th><th>得分</th><th>全壘打</th><th>局數</th></tr>
+      <tr><th>#</th><th>得分</th><th>HR</th><th>最遠</th></tr>
       ${rows}
     </table>
   `;
