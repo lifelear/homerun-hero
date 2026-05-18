@@ -8,8 +8,6 @@ export class HUD {
   }
 
   _initDots() {
-    // 出局點（紅）
-    this._buildDots('hud-outs', MAX_OUTS, 'out-dot');
     // 好球點（黃）
     this._buildDots('hud-strikes', MAX_STRIKES, 'strike-dot');
     // 壞球點（綠）
