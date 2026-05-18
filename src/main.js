@@ -126,7 +126,10 @@ function _cleanupBall() {
 
 // Keyboard
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') togglePause();
+  if (e.key === 'Escape' || e.key === ' ') {
+    e.preventDefault();
+    togglePause();
+  }
 });
 
 document.getElementById('pause-btn').addEventListener('pointerdown', (e) => {
