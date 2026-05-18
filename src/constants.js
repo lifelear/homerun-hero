@@ -52,6 +52,7 @@ export const MIN_EXIT_VELO = 12.0; // m/s → ×2.25 = 27 m/s (~60 mph)
 export const MAX_STRIKES = 3;   // 三振出局
 export const MAX_BALLS = 4;     // 四壞保送
 export const MAX_OUTS = 3;      // 三出局換局
+export const MAX_INNINGS = 9;   // 9局制
 
 // Game
 export const PHYSICS_DT = 1 / 120;
