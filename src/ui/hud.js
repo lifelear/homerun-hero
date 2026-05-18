@@ -1,4 +1,4 @@
-import { MAX_STRIKES, MAX_BALLS, MAX_OUTS, MS_TO_MPH } from '../constants.js';
+import { MAX_STRIKES, MAX_BALLS, MAX_OUTS, MAX_INNINGS, MS_TO_MPH } from '../constants.js';
 
 export class HUD {
   constructor() {
@@ -28,7 +28,7 @@ export class HUD {
   }
 
   update(score) {
-    this._setText('hud-inning', score.inning);
+    this._setText('hud-inning', `${score.inning}/${MAX_INNINGS}`);
     this._setText('hud-score', (score.totalScore || 0) + (score.score || 0));
     this._updateDots('hud-outs', score.outs, MAX_OUTS);
     this._updateDots('hud-strikes', score.strikes, MAX_STRIKES);
