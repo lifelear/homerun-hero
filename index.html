@@ -41,7 +41,7 @@
 
     /* 放大點點 */
     .count-dot {
-      width: 18px; height: 18px; border-radius: 50%;
+      width: 28px; height: 28px; border-radius: 50%;
       border: 2px solid #555; background: transparent;
       transition: background 0.1s, border-color 0.1s;
     }
@@ -50,15 +50,15 @@
     .count-dot.strike-dot.active { background: #ffcc00; border-color: #ffdd44; box-shadow: 0 0 6px #ffcc00; }
     .count-dot.ball-dot.active   { background: #44cc44; border-color: #66dd66; box-shadow: 0 0 6px #44cc44; }
 
-    /* ── 壘包圖示（放大，左下角）── */
+    /* ── 壘包圖示（放大，右下角）── */
     #hud-bases-wrap {
-      position: fixed; bottom: 40px; left: 16px; pointer-events: none;
+      position: fixed; bottom: 40px; right: 16px; pointer-events: none;
     }
 
-    #hud-bases { position: relative; width: 90px; height: 90px; }
+    #hud-bases { position: relative; width: 104px; height: 104px; }
 
     .base-diamond {
-      position: absolute; width: 28px; height: 28px;
+      position: absolute; width: 32px; height: 32px;
       background: rgba(255,255,255,0.12);
       border: 2px solid rgba(255,255,255,0.4);
       transform: rotate(45deg);
@@ -68,14 +68,14 @@
     .base-diamond.occupied {
       background: #ffcc00;
       border-color: #ffaa00;
-      box-shadow: 0 0 10px #ffcc00;
+      box-shadow: 0 0 12px #ffcc00;
     }
 
     /* 菱形排列 */
-    #base-2    { top: 2px;  left: 31px; }
-    #base-1    { top: 31px; left: 60px; }
-    #base-3    { top: 31px; left: 2px;  }
-    #base-home { top: 60px; left: 31px; opacity: 0.35; }
+    #base-2    { top: 2px;  left: 36px; }
+    #base-1    { top: 36px; left: 70px; }
+    #base-3    { top: 36px; left: 2px;  }
+    #base-home { top: 70px; left: 36px; opacity: 0.35; }
 
     /* ── 底部統計 ── */
     #hud-bottom {
