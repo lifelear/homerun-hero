@@ -132,9 +132,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-document.getElementById('pause-btn').addEventListener('pointerdown', (e) => {
-  e.stopPropagation(); togglePause();
-});
 document.getElementById('pause-resume').addEventListener('pointerdown', (e) => { e.stopPropagation(); resumeGame(); });
 document.getElementById('pause-restart').addEventListener('pointerdown', (e) => { e.stopPropagation(); restartGame(); });
 document.getElementById('pause-menu').addEventListener('pointerdown', (e) => { e.stopPropagation(); goToMenu(); });
