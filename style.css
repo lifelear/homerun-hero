@@ -39,7 +39,7 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  background: rgba(0,0,0,0.75);
+  background: transparent;
 }
 
 #hud-title {
@@ -113,7 +113,7 @@ html, body {
   justify-content: center;
   gap: clamp(10px, 4vw, 30px);
   padding: 8px 12px;
-  background: rgba(0,0,0,0.65);
+  background: transparent;
   font-size: clamp(11px, 2.5vw, 15px);
   font-weight: 600;
   letter-spacing: 1px;
