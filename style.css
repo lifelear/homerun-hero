@@ -30,7 +30,6 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
   pointer-events: none;
   z-index: 10;
 }
@@ -39,8 +38,8 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  padding: 10px 20px;
+  background: rgba(0,0,0,0.75);
 }
 
 #hud-title {
@@ -48,51 +47,61 @@ html, body {
   font-weight: 700;
   letter-spacing: 1px;
   white-space: nowrap;
+  color: #ffcc00;
 }
 
-#pause-area {
-  position: fixed;
-  top: 44px;
-  right: 12px;
+#hud-count-area {
   display: flex;
+  gap: 20px;
   align-items: center;
-  gap: 6px;
-  pointer-events: auto;
-  z-index: 15;
-  opacity: 0.6;
 }
 
-#diff-label {
-  font-size: clamp(10px, 2vw, 13px);
-  font-weight: 600;
+.count-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.count-label {
+  font-size: 11px;
+  color: #bbb;
+  font-weight: bold;
   letter-spacing: 1px;
-  color: #ffd700;
 }
 
-#pause-btn {
-  font-size: clamp(18px, 3.5vw, 24px);
-  cursor: pointer;
-}
-
-#hud-strikes {
+.dot-row {
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 14px;
-  font-weight: 600;
 }
 
-.strike-dot {
-  width: clamp(8px, 2vw, 12px);
-  height: clamp(8px, 2vw, 12px);
+/* 統一點點大小 28px */
+.count-dot {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.4);
-  transition: background 0.2s, border-color 0.2s;
+  border: 2px solid #555;
+  background: transparent;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
 }
 
-.strike-dot.active {
+.count-dot.strike-dot.active {
+  background: #ffcc00;
+  border-color: #ffdd44;
+  box-shadow: 0 0 8px #ffcc00;
+}
+
+.count-dot.ball-dot.active {
+  background: #44cc44;
+  border-color: #66dd66;
+  box-shadow: 0 0 8px #44cc44;
+}
+
+.count-dot.out-dot.active {
   background: #ff4444;
-  border-color: #ff4444;
+  border-color: #ff6666;
+  box-shadow: 0 0 8px #ff4444;
 }
 
 #hud-bottom {
@@ -104,11 +113,48 @@ html, body {
   justify-content: center;
   gap: clamp(10px, 4vw, 30px);
   padding: 8px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+  background: rgba(0,0,0,0.65);
   font-size: clamp(11px, 2.5vw, 15px);
   font-weight: 600;
   letter-spacing: 1px;
+  pointer-events: none;
 }
+
+/* 壘包圖示 */
+#hud-bases-wrap {
+  position: fixed;
+  bottom: 40px;
+  right: 16px;
+  pointer-events: none;
+  z-index: 12;
+}
+
+#hud-bases {
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+
+.base-diamond {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.12);
+  border: 2px solid rgba(255,255,255,0.4);
+  transform: rotate(45deg);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.base-diamond.occupied {
+  background: #ffcc00;
+  border-color: #ffaa00;
+  box-shadow: 0 0 12px #ffcc00;
+}
+
+#base-2    { top: 2px;  left: 36px; }
+#base-1    { top: 36px; left: 70px; }
+#base-3    { top: 36px; left: 2px;  }
+#base-home { top: 70px; left: 36px; opacity: 0.35; }
 
 /* Pitch tracker overlay */
 #pitch-tracker {
@@ -181,12 +227,13 @@ html, body {
 
 /* Result type colors */
 #result-type.home-run { color: #ffd700; }
-#result-type.hit { color: #44ff44; }
-#result-type.out { color: #ff4444; }
-#result-type.foul { color: #ffaa00; }
-#result-type.strike { color: #ff4444; }
+#result-type.hit      { color: #44ff44; }
+#result-type.out      { color: #ff4444; }
+#result-type.foul     { color: #ffaa00; }
+#result-type.strike   { color: #ff4444; }
+#result-type.ball-flash { color: #44cc44; }
 
-/* Title screen */
+/* Title / Game Over screen */
 #title-screen, #game-over {
   position: fixed;
   inset: 0;
@@ -196,7 +243,6 @@ html, body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.85);
   z-index: 100;
-  transition: opacity 0.5s;
   pointer-events: none;
 }
 
@@ -223,9 +269,12 @@ html, body {
   text-align: center;
 }
 
-#title-screen .sub {
+.sub-rules {
   font-size: clamp(11px, 2.5vw, 14px);
-  opacity: 0.5;
+  color: #aaa;
+  margin: 8px 0 14px;
+  line-height: 1.8;
+  text-align: center;
 }
 
 #difficulty-selector {
@@ -263,12 +312,13 @@ html, body {
   border-radius: 8px;
   color: #ffd700;
   cursor: pointer;
+  pointer-events: auto;
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  50%       { opacity: 1;   transform: scale(1.05); }
 }
 
 #final-stats {
@@ -338,9 +388,7 @@ html, body {
   pointer-events: none;
 }
 
-#pause-screen.hidden {
-  display: none;
-}
+#pause-screen.hidden { display: none; }
 
 #pause-screen h1 {
   font-size: clamp(32px, 8vw, 56px);
