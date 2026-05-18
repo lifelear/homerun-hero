@@ -505,12 +505,12 @@ function showGameOver() {
   let rows = '';
   board.forEach((e, i) => {
     const cls = i === currentIdx ? ' class="current"' : '';
-    rows += `<tr${cls}><td>${i + 1}</td><td>${e.score}分</td><td>${e.hr} HR</td><td>${e.best} ft</td></tr>`;
+    rows += `<tr${cls}><td>${i + 1}</td><td>${e.score}分</td><td>${e.hr} HR</td><td>${e.hits ?? '-'}</td><td>${e.best} ft</td></tr>`;
   });
   lbEl.innerHTML = `
     <h2>LEADERBOARD - ${diff}</h2>
     <table>
-      <tr><th>#</th><th>得分</th><th>HR</th><th>最遠</th></tr>
+      <tr><th>#</th><th>得分</th><th>HR</th><th>安打</th><th>最遠</th></tr>
       ${rows}
     </table>
   `;
