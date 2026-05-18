@@ -143,6 +143,14 @@ document.getElementById('gameover-menu').addEventListener('pointerdown', (e) => 
   gameState.transition(State.TITLE);
 });
 
+// --- Start button ---
+document.querySelectorAll('.start-btn').forEach(btn => {
+  btn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    startGame();
+  });
+});
+
 // --- Difficulty selector ---
 document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('pointerdown', (e) => {
